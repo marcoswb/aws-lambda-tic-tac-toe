@@ -5,6 +5,10 @@ import com.amazonaws.services.lambda.runtime.events.DynamodbEvent;
 import com.amazonaws.services.sqs.AmazonSQS;
 import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
 import com.amazonaws.services.sqs.model.SendMessageRequest;
+import com.amazonaws.services.sqs.model.MessageAttributeValue;
+import com.amazonaws.services.lambda.runtime.events.models.dynamodb.AttributeValue;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Main {
     
@@ -16,13 +20,23 @@ public class Main {
         event.getRecords().forEach(record -> {
             if (record.getEventName().equals("INSERT")) {
                 String newImage = record.getDynamodb().getNewImage().toString();
-                context.getLogger().log("MARCOSSSSSS: " + newImage);
                 
+                Map<String, MessageAttributeValue> messageAttributes = new HashMap<>();
+                AttributeValue data = (AttributeValue) record.getDynamodb().getNewImage().values().toArray()[2];
+                
+                data.getM().forEach((key, value) -> {
+                messageAttributes.put(key, new MessageAttributeValue()
+                        .withStringValue(value.getS())
+                        .withDataType("String"));
+                });   
 
-                SendMessageRequest sendRequest = new SendMessageRequest(SQS_QUEUE_URL, newImage);
+                SendMessageRequest sendRequest = new SendMessageRequest()
+                        .withQueueUrl(SQS_QUEUE_URL)
+                        .withMessageBody(newImage)
+                        .withMessageAttributes(messageAttributes);
                 sqsClient.sendMessage(sendRequest);
-
-                context.getLogger().log("PASSSOUUUUUUU: " + newImage);
+                
+                context.getLogger().log("-----DADOS-----: " + newImage);
             }
         });
     }
